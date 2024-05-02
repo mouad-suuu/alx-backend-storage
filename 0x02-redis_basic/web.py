@@ -5,6 +5,7 @@ import redis
 import requests
 from functools import wraps
 from typing import Callable
+import time
 
 
 redis_store = redis.Redis(decode_responses=True)
@@ -38,7 +39,8 @@ def get_page(url: str) -> str:
 
 
 if __name__ == "__main__":
-    # Example to test the caching and counting
     url = "http://google.com"
-    print(get_page(url))
-    print(get_page(url))  # This should hit the cache
+    print("First call (cache store):", get_page(url))
+    print("Second call (cache hit):", get_page(url))
+    time.sleep(11)
+    print("Third call (cache expired):", get_page(url))
