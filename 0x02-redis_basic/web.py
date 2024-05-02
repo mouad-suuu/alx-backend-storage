@@ -4,26 +4,26 @@
 import redis
 import requests
 from functools import wraps
-from typing import Callable, Optional
+from typing import Callable
 
 
 redis_store = redis.Redis(decode_responses=True)
 
 
 def data_cacher(method: Callable[[str], str]) -> Callable[[str], str]:
-    '''Caches the output of fetched data.
+    '''Decorator to cache the output of the fetched data.
     '''
     @wraps(method)
     def invoker(url: str) -> str:
         '''The wrapper function for caching the output.
+        Increments the access count for the given URL and caches its result.
         '''
-        redis_store.incr(f'count:{url}', amount=1)
-        result: Optional[str] = redis_store.get(f'result:{url}')
+        # Increment the count for the URL access
+        redis_store.incr(f'count:{url}')
+        result = redis_store.get(f'result:{url}')
         if result is not None:
             return result
-        # Fetch new result if not cached
         result = method(url)
-        # Reset the count and cache the new result with expiration time
         redis_store.setex(f'result:{url}', 10, result)
         return result
     return invoker
@@ -31,7 +31,14 @@ def data_cacher(method: Callable[[str], str]) -> Callable[[str], str]:
 
 @data_cacher
 def get_page(url: str) -> str:
-    '''Returns the content of a URL after caching the request's response,
-    and tracking the request.
+    '''Fetches the HTML content of a URL after caching the request's response,
+    and tracks the request.
     '''
     return requests.get(url).text
+
+
+if __name__ == "__main__":
+    # Example to test the caching and counting
+    url = "http://google.com"
+    print(get_page(url))
+    print(get_page(url))  # This should hit the cache
